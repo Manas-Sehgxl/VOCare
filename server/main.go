@@ -1,4 +1,4 @@
-// Command server runs the Bol OPD kiosk: it serves the web app from dist/ and
+// Command server runs the VOCare kiosk: it serves the web app from dist/ and
 // keeps the demo registration list that the kiosk and staff desk share.
 package main
 
@@ -55,7 +55,7 @@ func main() {
 	})
 
 	addr := ":" + port
-	log.Printf("Bol OPD on http://localhost%s", addr)
+	log.Printf("VOCare on http://localhost%s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 

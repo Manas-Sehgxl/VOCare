@@ -605,8 +605,6 @@ function finish() {
 
 // ---------- kiosk screens ----------
 
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 function micState() {
   if (mic === "ready" && s.sample) return "sample";
   if (mic === "ready" && !canListen()) return "dictate";
@@ -702,23 +700,6 @@ function demoChip() {
   return s.sample ? `<p class="demo-chip">${icon("info")}${esc(t("demoMode"))}</p>` : "";
 }
 
-// The words ribbon carries what the patient actually said, from the
-// microphone into their slip. Before anything is said it explains itself.
-function ribbon() {
-  const said = FIELDS.map(f => s.raw[f]).filter(Boolean);
-  if (s.heardText && !said.includes(s.heardText)) said.push(s.heardText);
-  const line = said.length ? said.join("  ·  ") : t("ribbonEmpty");
-  const text = esc(Array(6).fill(line).join("  ·  "));
-  const move = reducedMotion ? "" : '<animate attributeName="startOffset" from="0" to="-1400" dur="28s" repeatCount="indefinite"/>';
-  return `<svg class="ribbon" viewBox="0 0 1700 260" width="1700" height="260" aria-hidden="true" focusable="false">
-    <path id="rib-past" d="M0 200 C150 200 260 130 400 130" fill="none"/>
-    <path id="rib-band" d="M400 130 C640 130 760 92 980 104 S1380 150 1700 128" fill="none"/>
-    <use href="#rib-band" class="band"/>
-    <text class="past"><textPath href="#rib-past" startOffset="0">${text}</textPath></text>
-    <text class="words"><textPath href="#rib-band" startOffset="0">${move}${text}</textPath></text>
-  </svg>`;
-}
-
 // The slip is the patient's parchi. It fills in as they answer, marks the
 // question they are on, and receives the token at the end.
 function slip({ editable = false, record = null } = {}) {
@@ -744,11 +725,9 @@ function slip({ editable = false, record = null } = {}) {
 }
 
 function welcomeView() {
-  const greet = esc(Array(4).fill("नमस्ते  ·  राम राम  ·  प्रणाम  ·  सत श्री अकाल  ·  आदाब  ·  जय जोहार  ·  Namaste").join("  ·  "));
-  const move = reducedMotion ? "" : '<animate attributeName="startOffset" from="0" to="-900" dur="40s" repeatCount="indefinite"/>';
   return `<section class="welcome">
     <div class="welcome-main">
-      <h1 tabindex="-1"><span lang="hi">नमस्ते</span></h1>
+      <h1 tabindex="-1"><span lang="hi">नमस्ते</span><small lang="en">Namaste</small></h1>
       <p class="lead"><span lang="hi">बोलकर पंजीकरण करें। भाषा चुनें।</span><br><span lang="en">Register by speaking. Choose your language.</span></p>
       <div class="lang-pick">
         <button type="button" data-act="lang-hi" lang="hi" class="lang">हिन्दी</button>
@@ -762,14 +741,6 @@ function welcomeView() {
         <span class="track"><span class="thumb">${icon("check")}</span></span>
         <span>Demo mode: simulated speech, no microphone needed</span></label>
       ${s.sample ? sampleTray() : ""}
-    </div>
-    <div class="welcome-art" aria-hidden="true">
-      <svg viewBox="0 0 600 640" focusable="false">
-        <path id="loop" d="M40 520 C40 300 300 120 420 210 S420 470 280 430 S180 160 330 90 S620 120 600 330" fill="none"/>
-        <use href="#loop" class="loop-band"/>
-        <text class="loop-words"><textPath href="#loop">${move}${greet}</textPath></text>
-      </svg>
-      <p class="art-note"><span lang="hi">हर बोली सुनी जाती है</span></p>
     </div>
   </section>`;
 }
@@ -806,9 +777,9 @@ function intakeView() {
   else if (s.answers[f]) value = shown(f);
   return `<div class="kiosk">${stage(`
     <h2 tabindex="-1">${esc(question(f))}</h2>
-    <div class="voice">${ribbon()}${micButton()}${heardLine()}</div>
+    <div class="voice">${micButton()}${heardLine()}</div>
     ${warningBox()}${pendingBox()}
-    ${p ? "" : `<div class="plaque ${value ? "has" : ""}">
+    ${p || !value ? "" : `<div class="plaque has">
       <div><span class="slip-label">${esc(label(f))}</span>
         <span class="plaque-value">${value ? esc(value) + (p?.type === "confirmHeard" ? "?" : "") : "…"}</span>
         ${value && (f === "name" || f === "village") ? latin(value) : ""}</div>
@@ -963,7 +934,7 @@ function slipHTML(r) {
   const when = new Date(r.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
   const confirmed = r.status === "Registered";
   return `<div class="slip">
-    <p class="slip-head">Bol OPD · OPD registration slip</p>
+    <p class="slip-head">VOCare · OPD registration slip</p>
     <p class="slip-demo">Demo prototype · fictional data</p>
     <div class="slip-token">${esc(r.token)}</div>
     <table>
@@ -1036,14 +1007,14 @@ function sortedRecords() {
 function queueRow(r) {
   const a = r.answers;
   const action = r.status === "Needs Assistance" ? ibtn("open-" + r.id, "help", "Help now", "danger small")
-    : r.status === "Awaiting Department Review" ? ibtn("open-" + r.id, "check", "Review", "primary small")
+    : r.status === "Awaiting Department Review" ? ibtn("open-" + r.id, "check", "Review", "outlined small")
     : ibtn("open-" + r.id, "edit", "Edit", "text small");
   return `<tr class="${staff.open === r.id ? "is-open" : ""}">
     <td><span class="pill ${statusClass(r.status)}">${esc(r.status)}</span></td>
     <td class="num">${esc(r.token || "—")}</td>
     <td><b>${esc(a.name || "Name not given")}</b> ${latin(a.name)}<span class="sub">${esc(a.age || "age —")} · ${esc(a.village || "village —")} ${latin(a.village)}</span></td>
     <td class="complaint">${esc(r.raw?.complaint || a.complaint || "—")}${r.gloss ? `<span class="sub">${esc(r.gloss)}</span>` : ""}${r.reason ? `<span class="sub reason">${esc(r.reason)}</span>` : ""}</td>
-    <td class="wide">${esc(r.department)}<span class="sub">${r.status === "Registered" ? "confirmed" : "suggested"}</span></td>
+    <td class="wide dept-cell">${esc(r.department)}<span class="sub">${r.status === "Registered" ? "confirmed" : "suggested"}</span></td>
     <td class="num wide">${esc(clock(r.createdAt))}</td>
     <td class="act">${action}${r.token ? ibtn("print-" + r.id, "print", "Print", "text small") : ""}</td>
   </tr>`;

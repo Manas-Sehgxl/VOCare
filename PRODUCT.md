@@ -39,8 +39,8 @@ Registration as a short conversation with a patient hospital worker, not a form.
 
 ## Brand Commitments
 
-- Name: **Bol OPD** ("bol" = speak).
-- User asked for a Material 3-like UI/UX across the product (binding direction from the user, 2026-11-27).
+- Name: **VOCare** (voice + care; renamed from Bol OPD on 2026-11-27).
+- Calm white UI with one teal accent (chosen by the user 2026-11-27, replacing the Material 3 and slip looks).
 - Bilingual copy, Hindi in Devanagari for display and speech.
 
 ## Evidence on Hand
