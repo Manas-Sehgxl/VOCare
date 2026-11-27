@@ -1,3 +1,3 @@
-module github.com/Manas-Sehgxl/bol-opd
+module github.com/Manas-Sehgxl/VOCare
 
 go 1.23
