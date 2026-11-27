@@ -1,8 +1,30 @@
+<p align="center"><img src="docs/media/banner.jpg" alt="VOCare: OPD registration, just by speaking" width="100%"></p>
+
+<p align="center">
+  <a href="https://vocare.gaurishhs.xyz"><b>Try the kiosk</b></a> ·
+  <a href="https://vocare.gaurishhs.xyz/#staff"><b>Staff desk</b></a> ·
+  <a href="docs/VOCare-pitch-deck.pdf"><b>Pitch deck (PDF)</b></a>
+</p>
+
+<p align="center">
+  <img alt="Go" src="https://img.shields.io/badge/Go-stdlib%20only-0f766e">
+  <img alt="Front end" src="https://img.shields.io/badge/front%20end-plain%20ES%20modules-e6b437">
+  <img alt="Languages" src="https://img.shields.io/badge/speech-Hindi%20·%20English%20·%20mixed-e8672a">
+  <img alt="API keys" src="https://img.shields.io/badge/API%20keys-none-3a4fb0">
+  <img alt="Built for" src="https://img.shields.io/badge/built%20for-Scaler%20x%20Wispr%20Flow-7a3f98">
+</p>
+
 # VOCare
 
-**Live demo:** https://vocare.gaurishhs.xyz (kiosk) · https://vocare.gaurishhs.xyz/#staff (staff desk)
-
 A voice-first OPD registration kiosk for a government hospital. A patient speaks their name, age, sex, village and problem in Hindi, English or a mix of the two, hears it read back, corrects anything that was misheard and gets a token. They never type. A staff dashboard on any other device sees each registration and help request as it happens.
+
+| Speak, then fix by voice | Token and slip |
+|---|---|
+| <img src="docs/media/correction.jpg" alt="Review screen after the village was corrected from Rampur to Ramnagar"> | <img src="docs/media/token.jpg" alt="Token screen showing OPD-001"> |
+| **Two failures, then a person** | **Staff desk, live** |
+| <img src="docs/media/staff-offer.jpg" alt="Kiosk offering staff help after two failed attempts"> | <img src="docs/media/staff-desk.jpg" alt="Staff desk with the registration marked Registered"> |
+
+<sub>Real screens from the app in demo mode. The patient, Savitri Devi from Ramnagar, is fictional.</sub>
 
 ## Run
 
@@ -24,6 +46,8 @@ node --test test/*.mjs   # speech parsing (Node 20+)
 
 ## Try it
 
+<img src="docs/media/welcome.jpg" alt="Welcome screen with Hindi and English buttons and the demo mode switch" width="720">
+
 Switch on **Demo mode** on the welcome screen to use buttons that stand in for speech. They are labelled as simulated, and each one is passed through the same parser as live speech.
 
 1. **Hindi registration.** Tap हिन्दी, then the demo answers in order: हाँ → “मेरा नाम सावित्री देवी है” → “लगभग पचपन साल” → “महिला” → “रामपुर” → “पेट में तीन दिन से दर्द है”. The kiosk shows *Name: सावित्री देवी (Savitri Devi)*, *Age: लगभग 55*, *Sex: महिला (Female)*, and keeps the complaint word for word.
@@ -35,6 +59,8 @@ Switch on **Demo mode** on the welcome screen to use buttons that stand in for s
 With demo mode off, Chrome or Edge on localhost (or HTTPS) listens through the microphone after every prompt.
 
 **Wispr Flow fallback.** Browser speech recognition needs Google's online service, which often fails on Linux and Brave ("network" error). When it does, the kiosk says so once and shows a dictation box instead. Hold your [Wispr Flow](https://wisprflow.ai) key and speak: Flow types your words into the box, and after a short pause the kiosk handles them exactly like live speech (corrections, readback and all). Any system dictation works the same way. You can say “दोबारा” or “repeat”, “मदद” or “help”, and “गलत है”, or use the buttons at the bottom of the screen.
+
+<img src="docs/media/wispr-flow.jpg" alt="Kiosk with the Wispr Flow dictation box after the name was dictated" width="720">
 
 ## How it works
 
