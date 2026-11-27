@@ -1,5 +1,7 @@
 # VOCare
 
+**Live demo:** https://vocare.gaurishhs.xyz (kiosk) · https://vocare.gaurishhs.xyz/#staff (staff desk)
+
 A voice-first OPD registration kiosk for a government hospital. A patient speaks their name, age, sex, village and problem in Hindi, English or a mix of the two, hears it read back, corrects anything that was misheard and gets a token. They never type. A staff dashboard on any other device sees each registration and help request as it happens.
 
 ## Run
