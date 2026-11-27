@@ -96,6 +96,13 @@ export const TEXT = {
   latin: ["Latin spelling (auto)", "लैटिन वर्तनी (स्वचालित)"],
   keyWords: ["English key words (demo glossary, not a translation)", "अंग्रेज़ी मुख्य शब्द (डेमो, अनुवाद नहीं)"],
   step: [(i, n) => `Question ${i} of ${n}`, (i, n) => `सवाल ${i} / ${n}`],
+  slipTitle: ["Your slip", "आपकी पर्ची"],
+  slipSub: ["Fills in as you speak", "बोलते ही भरती जाती है"],
+  slipDone: ["Show this at the OPD counter", "यह पर्ची ओपीडी काउंटर पर दिखाइए"],
+  tokenLater: ["Token: given after you confirm", "टोकन: पुष्टि के बाद मिलेगा"],
+  speakingNow: ["Speak now…", "बोलिए…"],
+  ribbonEmpty: ["Your words go from here to your slip", "आपकी बात यहाँ से पर्ची तक जाएगी"],
+  reviewHint: ["Check your slip. Say yes, or say what to change.", "अपनी पर्ची देखिए। सही है तो हाँ बोलिए, या बताइए क्या बदलना है।"],
 };
 
 // Demo utterances, written the way each recogniser would return them. They

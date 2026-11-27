@@ -599,6 +599,7 @@ function finish() {
 
 // ---------- kiosk screens ----------
 
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function micState() {
   if (mic === "ready" && s.sample) return "sample";
@@ -610,12 +611,16 @@ function micText() {
   return t({ ready: "micReady", listening: "micListening", processing: "micProcessing", speaking: "micSpeaking", sample: "micSample", off: "micOff" }[micState()]);
 }
 
+// The microphone is a waveform pill: the bars move while it listens, fold to
+// dots while it works out what was said, and fill green while it speaks.
 function micButton() {
   const st = micState();
   const disabled = st === "sample" || st === "off" ? "disabled" : "";
-  const glyph = { listening: "mic", processing: "wave", speaking: "volume", sample: "micOff", off: "micOff" }[st] || "mic";
+  const glyph = st === "sample" || st === "off"
+    ? icon("micOff")
+    : `<span class="bars" aria-hidden="true">${"<i></i>".repeat(7)}</span>`;
   return `<button type="button" id="mic" class="mic is-${st}" data-act="speak" ${disabled}>
-    <span class="mic-ring">${icon(glyph)}</span><span class="mic-label">${esc(micText())}</span></button>`;
+    ${glyph}<span class="mic-label">${esc(micText())}</span></button>`;
 }
 
 // latin() is for names and places only; a complaint stays in its own words.
@@ -629,7 +634,7 @@ function shown(f) {
 }
 
 function heardLine() {
-  return s.heardText ? `<p class="heard">${esc(t("heard"))}: “${esc(s.heardText)}”</p>` : "";
+  return s.heardText ? `<p class="heard">${esc(t("heard"))} <q>${esc(s.heardText)}</q></p>` : "";
 }
 
 function warningBox() {
@@ -639,19 +644,19 @@ function warningBox() {
 function pendingBox() {
   const p = s.pending;
   if (!p || p.type === "idle") return "";
-  const box = (text, buttons) => `<div class="pending" role="alert"><p>${esc(text)}</p><div class="actions">${buttons}</div></div>`;
-  const yes = ibtn("yes", "check", t("yes"), "primary"), no = ibtn("no", "close", t("no"), "tonal");
+  const box = (text, buttons) => `<div class="pending" role="alert"><p>${esc(text)}</p>${buttons ? `<div class="actions">${buttons}</div>` : ""}</div>`;
+  const yes = ibtn("yes", "check", t("yes"), "primary"), no = ibtn("no", "close", t("no"), "outlined");
   switch (p.type) {
     case "confirmHeard":
       return box(t("heardConfirm", p.value), yes + no);
     case "whichField":
-      return box(t("whichField"), FIELDS.map(f => btn("field-" + f, label(f), "big-choice tonal")).join(""));
+      return box(t("whichField"), FIELDS.map(f => btn("field-" + f, label(f), "choice")).join(""));
     case "moreTime":
-      return box(t("moreTime"), ibtn("more", "check", t("moreTimeBtn"), "primary") + ibtn("help", "help", t("help"), "tertiary"));
+      return box(t("moreTime"), ibtn("more", "check", t("moreTimeBtn"), "primary") + ibtn("help", "help", t("help"), "danger"));
     case "staffOffer":
-      return box(t("staffOffer"), ibtn("help", "help", t("help"), "tertiary") + no);
+      return box(t("staffOffer"), ibtn("help", "help", t("help"), "danger") + no);
     case "declined":
-      return box(t("declined"), ibtn("help", "help", t("help"), "tertiary") + ibtn("cancel", "close", t("cancel"), "tonal"));
+      return box(t("declined"), ibtn("help", "help", t("help"), "danger") + ibtn("cancel", "close", t("cancel"), "outlined"));
     case "district":
       return box(t("district", s.answers.village), "");
   }
@@ -673,92 +678,138 @@ function samplesFor() {
 function sampleTray() {
   if (!s.sample && SR) return "";
   const list = samplesFor();
-  const extra = s.screen === "welcome" ? "" : ibtn("noise", "volume", t("noiseSample"), "sample ghost") + ibtn("silence", "micOff", t("silenceSample"), "sample ghost");
-  return `<div class="tray"><p class="tray-title">${icon("info")}${esc(t("sampleTray"))}</p><div class="chips">
-    ${list.map((x, i) => btn("sample-" + i, (x.label || "“" + x.text + "”") + (x.note ? " · " + x.note : ""), "sample")).join("")}${extra}
+  const extra = s.screen === "welcome" ? "" : ibtn("noise", "volume", t("noiseSample"), "chip quiet") + ibtn("silence", "micOff", t("silenceSample"), "chip quiet");
+  return `<div class="tray"><p class="tray-title">${esc(t("sampleTray"))}</p><div class="chips">
+    ${list.map((x, i) => btn("sample-" + i, (x.label || "“" + x.text + "”") + (x.note ? " · " + x.note : ""), "chip")).join("")}${extra}
   </div></div>`;
 }
 
 function controls() {
-  const item = (act, name, text, cls = "") => `<button type="button" data-act="${act}" class="control ${cls}">
-      <span class="control-icon">${icon(name)}</span><span class="control-label">${esc(text)}</span></button>`;
+  const item = (act, name, text, cls = "") => `<button type="button" data-act="${act}" class="control ${cls}">${icon(name)}<span>${esc(text)}</span></button>`;
   const correct = s.screen === "intake" || s.screen === "review" ? item("correct", "edit", t("correct")) : "";
   return `<nav class="controls" aria-label="Controls">
-    ${item("repeat", "replay", t("repeat"))}${correct}${item("help", "help", t("help"), "help")}${item("cancel", "close", t("cancel"))}
+    ${item("repeat", "replay", t("repeat"))}${correct}${item("help", "help", t("help"), "help")}${item("cancel", "close", t("cancel"), "quiet")}
   </nav>`;
 }
 
-function topline(extra = "") {
-  return `<div class="topline"><span class="mode">${esc(s.sample ? t("demoMode") : t("voiceMode"))}</span>${extra}</div>`;
+function demoChip() {
+  return s.sample ? `<p class="demo-chip">${icon("info")}${esc(t("demoMode"))}</p>` : "";
+}
+
+// The words ribbon carries what the patient actually said, from the
+// microphone into their slip. Before anything is said it explains itself.
+function ribbon() {
+  const said = FIELDS.map(f => s.raw[f]).filter(Boolean);
+  if (s.heardText && !said.includes(s.heardText)) said.push(s.heardText);
+  const line = said.length ? said.join("  ·  ") : t("ribbonEmpty");
+  const text = esc(Array(6).fill(line).join("  ·  "));
+  const move = reducedMotion ? "" : '<animate attributeName="startOffset" from="0" to="-1400" dur="28s" repeatCount="indefinite"/>';
+  return `<svg class="ribbon" viewBox="0 0 1700 260" width="1700" height="260" aria-hidden="true" focusable="false">
+    <path id="rib-past" d="M0 200 C150 200 260 130 400 130" fill="none"/>
+    <path id="rib-band" d="M400 130 C640 130 760 92 980 104 S1380 150 1700 128" fill="none"/>
+    <use href="#rib-band" class="band"/>
+    <text class="past"><textPath href="#rib-past" startOffset="0">${text}</textPath></text>
+    <text class="words"><textPath href="#rib-band" startOffset="0">${move}${text}</textPath></text>
+  </svg>`;
+}
+
+// The slip is the patient's parchi. It fills in as they answer, marks the
+// question they are on, and receives the token at the end.
+function slip({ editable = false, record = null } = {}) {
+  const now = s.screen === "intake" ? FIELDS[s.step] : null;
+  const rows = FIELDS.map(f => {
+    const pend = s.pending?.type === "confirmHeard" && s.pending.field === f ? s.pending.value + "?" : "";
+    const value = pend || shown(f);
+    const state = f === now ? "now" : value ? "done" : "todo";
+    const extra = f === "complaint" && s.gloss && editable ? `<span class="gloss" title="${esc(t("keyWords"))}">EN · ${esc(s.gloss)}</span>` : "";
+    return `<div class="slip-row is-${state} ${s.flash === f ? "flash" : ""}">
+      <div><span class="slip-label">${esc(label(f))}</span>
+        <span class="slip-value">${value ? esc(value) : f === now ? esc(t("speakingNow")) : "—"}</span>
+        ${value && (f === "name" || f === "village") ? latin(value) : ""}${extra}</div>
+      ${editable ? ibtn("field-" + f, "edit", t("change"), "text") : state === "done" ? `<span class="tick">${icon("check")}</span>` : ""}
+    </div>`;
+  }).join("");
+  const foot = record
+    ? `<div class="slip-token"><span>${esc(t("tokenTitle"))}</span><strong>${esc(record.token)}</strong></div>`
+    : `<p class="slip-foot">${esc(t("tokenLater"))}</p>`;
+  return `<aside class="slip" aria-label="${esc(t("slipTitle"))}">
+    <h3>${esc(t("slipTitle"))}</h3><p class="slip-sub">${esc(record ? t("slipDone") : t("slipSub"))}</p>
+    ${rows}${foot}</aside>`;
 }
 
 function welcomeView() {
+  const greet = esc(Array(4).fill("नमस्ते  ·  राम राम  ·  प्रणाम  ·  सत श्री अकाल  ·  आदाब  ·  जय जोहार  ·  Namaste").join("  ·  "));
+  const move = reducedMotion ? "" : '<animate attributeName="startOffset" from="0" to="-900" dur="40s" repeatCount="indefinite"/>';
   return `<section class="welcome">
-    <p class="hello"><span lang="hi">नमस्ते</span> <span class="hello-en">Namaste</span></p>
-    <p class="lead"><span lang="hi">भाषा चुनें</span> · Choose your language</p>
-    <div class="lang-pick">
-      <button type="button" data-act="lang-hi" lang="hi" class="lang">हिन्दी</button>
-      <button type="button" data-act="lang-en" lang="en" class="lang">English</button>
+    <div class="welcome-main">
+      <h1 tabindex="-1"><span lang="hi">नमस्ते</span></h1>
+      <p class="lead"><span lang="hi">बोलकर पंजीकरण करें। भाषा चुनें।</span><br><span lang="en">Register by speaking. Choose your language.</span></p>
+      <div class="lang-pick">
+        <button type="button" data-act="lang-hi" lang="hi" class="lang">हिन्दी</button>
+        <button type="button" data-act="lang-en" lang="en" class="lang">English</button>
+      </div>
+      <div class="welcome-voice">
+        ${s.voice ? micButton() : `<button type="button" class="mic" data-act="welcome-mic"><span class="bars" aria-hidden="true">${"<i></i>".repeat(7)}</span><span class="mic-label"><span lang="hi">बोलकर चुनें</span> · Say it</span></button>`}
+      </div>
+      ${warningBox()}${heardLine()}
+      <label class="switch"><input type="checkbox" role="switch" data-act="demo-toggle" ${s.sample ? "checked" : ""}>
+        <span class="track"><span class="thumb">${icon("check")}</span></span>
+        <span>Demo mode: simulated speech, no microphone needed</span></label>
+      ${s.sample ? sampleTray() : ""}
     </div>
-    <div class="welcome-voice">
-      <button type="button" class="mic-start" data-act="welcome-mic">${icon("mic")}<span><span lang="hi">बोलकर चुनें</span> · Say it</span></button>
-      ${s.voice ? micButton() : ""}
+    <div class="welcome-art" aria-hidden="true">
+      <svg viewBox="0 0 600 640" focusable="false">
+        <path id="loop" d="M40 520 C40 300 300 120 420 210 S420 470 280 430 S180 160 330 90 S620 120 600 330" fill="none"/>
+        <use href="#loop" class="loop-band"/>
+        <text class="loop-words"><textPath href="#loop">${move}${greet}</textPath></text>
+      </svg>
+      <p class="art-note"><span lang="hi">हर बोली सुनी जाती है</span></p>
     </div>
-    ${warningBox()}${heardLine()}
-    <label class="switch"><input type="checkbox" role="switch" data-act="demo-toggle" ${s.sample ? "checked" : ""}>
-      <span class="track"><span class="thumb">${icon("check")}</span></span>
-      <span>Demo mode: simulated speech, no microphone needed</span></label>
-    ${s.sample ? sampleTray() : ""}
   </section>`;
 }
 
+function stage(inner) {
+  return `<section class="stage">${demoChip()}${inner}${sampleTray()}</section>`;
+}
+
 function consentView() {
-  return `<section class="kiosk">${topline()}
+  return `<div class="kiosk">${stage(`
     <h2 tabindex="-1">${esc(t("consentTitle"))}</h2>
     <p class="say">${esc(t("consent"))}</p>
-    ${micButton()}${heardLine()}${warningBox()}${pendingBox()}
-    <div class="actions">${ibtn("start", "check", t("start"), "primary xl")}${ibtn("decline", "close", t("no"), "tonal xl")}</div>
-    <p class="note">${esc(t("consentNote"))}</p>
-    ${sampleTray()}
-  </section>${controls()}`;
+    <div class="voice">${micButton()}${heardLine()}</div>
+    ${warningBox()}${pendingBox()}
+    <div class="actions">${ibtn("start", "check", t("start"), "primary xl")}${ibtn("decline", "close", t("no"), "outlined xl")}</div>
+    <p class="note">${esc(t("consentNote"))}</p>`)}
+    ${slip()}</div>${controls()}`;
 }
 
 function intakeView() {
   const f = FIELDS[s.step];
   const p = s.pending;
-  let value = "", hint = "";
-  if (p?.type === "confirmHeard") { value = p.value; hint = "?"; }
+  let value = "";
+  if (p?.type === "confirmHeard") value = p.value;
   else if (s.answers[f]) value = shown(f);
-  const dots = FIELDS.map((k, i) => `<i class="${i === s.step ? "now" : s.answers[k] ? "done" : ""}"></i>`).join("");
-  const others = FIELDS.filter(k => k !== f && s.answers[k])
-    .map(k => `<li class="${s.flash === k ? "flash" : ""}"><b>${esc(label(k))}</b> ${esc(shown(k))} ${latin(s.answers[k])}</li>`).join("");
-  return `<section class="kiosk">${topline(`<span class="dots" aria-label="${esc(t("step", s.step + 1, 4))}">${dots}</span>`)}
+  return `<div class="kiosk">${stage(`
     <h2 tabindex="-1">${esc(question(f))}</h2>
-    <div class="captured ${value ? "has" : ""}">
-      <span class="cap-label">${esc(label(f))}</span>
-      <span class="cap-value">${value ? esc(value) + hint : "…"}</span>
-      ${value ? latin(value) : ""}
+    <div class="voice">${ribbon()}${micButton()}${heardLine()}</div>
+    <div class="plaque ${value ? "has" : ""}">
+      <div><span class="slip-label">${esc(label(f))}</span>
+        <span class="plaque-value">${value ? esc(value) + (p?.type === "confirmHeard" ? "?" : "") : "…"}</span>
+        ${value && (f === "name" || f === "village") ? latin(value) : ""}</div>
+      ${value ? ibtn("field-" + f, "edit", t("change"), "outlined") : ""}
     </div>
-    ${micButton()}${heardLine()}${warningBox()}${pendingBox()}
-    ${others ? `<ul class="so-far">${others}</ul>` : ""}
-    ${sampleTray()}
-  </section>${controls()}`;
+    ${warningBox()}${pendingBox()}`)}
+    ${slip()}</div>${controls()}`;
 }
 
 function reviewView() {
-  const rows = FIELDS.map(f => `<div class="row ${s.flash === f ? "flash" : ""}">
-      <dt>${esc(label(f))}</dt>
-      <dd>${esc(shown(f))} ${f === "complaint" ? "" : latin(s.answers[f])}
-        ${f === "complaint" && s.gloss ? `<span class="gloss" title="${esc(t("keyWords"))}">EN: ${esc(s.gloss)}</span>` : ""}</dd>
-      ${ibtn("field-" + f, "edit", t("change"), "text small")}
-    </div>`).join("");
-  return `<section class="kiosk">${topline()}
+  return `<div class="kiosk review-screen">${stage(`
     <h2 tabindex="-1">${esc(t("reviewTitle"))}</h2>
-    <dl class="review">${rows}</dl>
-    ${micButton()}${heardLine()}${warningBox()}${pendingBox()}
-    <div class="actions">${ibtn("confirm", "check", t("confirm"), "primary xl")}</div>
-    ${sampleTray()}
-  </section>${controls()}`;
+    <p class="say">${esc(t("reviewHint"))}</p>
+    <div class="voice">${micButton()}${heardLine()}</div>
+    ${warningBox()}${pendingBox()}
+    <div class="actions">${ibtn("confirm", "check", t("confirm"), "primary xl")}</div>`)}
+    ${slip({ editable: true })}</div>${controls()}`;
 }
 
 function deptName(d) {
@@ -767,27 +818,28 @@ function deptName(d) {
 
 function tokenView() {
   const r = s.record;
-  return `<section class="kiosk token-screen">
-    <p class="kicker">${esc(t("tokenTitle"))}</p>
-    <div class="token" tabindex="-1">${esc(r.token)}</div>
-    <p class="dept"><b>${esc(t("department"))}:</b> ${esc(deptName(r.department))}<br><span class="small">${esc(t("deptNote"))}</span></p>
-    <dl class="review">${FIELDS.map(f => `<div class="row"><dt>${esc(label(f))}</dt><dd>${esc(shown(f))} ${f === "complaint" ? "" : latin(s.answers[f])}</dd></div>`).join("")}</dl>
-    <p class="small">ID ${esc(r.id)}</p>
-    <div class="actions">${ibtn("print", "print", t("print"), "primary xl")}${ibtn("replay", "volume", t("replay"), "tonal xl")}${ibtn("finish", "done", t("finish"), "xl")}</div>
-    <p class="small" id="left">${esc(t("clearsIn", s.left))}</p>
-  </section>`;
+  return `<div class="kiosk token-screen">
+    <section class="stage">
+      <h2 tabindex="-1">${esc(t("tokenTitle"))}</h2>
+      <p class="token">${esc(r.token)}</p>
+      <p class="dept">${esc(t("department"))}: <b>${esc(deptName(r.department))}</b></p>
+      <p class="note">${esc(t("deptNote"))}</p>
+      <div class="actions">${ibtn("print", "print", t("print"), "primary xl")}${ibtn("replay", "volume", t("replay"), "outlined xl")}${ibtn("finish", "done", t("finish"), "outlined xl")}</div>
+      <p class="small" id="left">${esc(t("clearsIn", s.left))} · ID ${esc(r.id)}</p>
+    </section>
+    ${slip({ record: r })}</div>`;
 }
 
 function helpView() {
-  const given = FIELDS.filter(f => s.answers[f]).map(f => `<li><b>${esc(label(f))}</b> ${esc(shown(f))}</li>`).join("");
-  return `<section class="kiosk">
-    <h2 tabindex="-1">${esc(t("helpTitle"))}</h2>
-    <p class="say">${esc(t("helpText"))}</p>
-    ${warningBox()}
-    ${given ? `<ul class="so-far">${given}</ul>` : ""}
-    <div class="actions">${ibtn("finish", "done", t("finish"), "primary xl")}</div>
-    <p class="small" id="left">${esc(t("clearsIn", s.left))}</p>
-  </section>`;
+  return `<div class="kiosk">
+    <section class="stage">
+      <h2 tabindex="-1">${esc(t("helpTitle"))}</h2>
+      <p class="say">${esc(t("helpText"))}</p>
+      ${warningBox()}
+      <div class="actions">${ibtn("finish", "done", t("finish"), "primary xl")}</div>
+      <p class="small" id="left">${esc(t("clearsIn", s.left))}</p>
+    </section>
+    ${slip()}</div>`;
 }
 
 function idleOverlay() {
@@ -797,6 +849,7 @@ function idleOverlay() {
 function render() {
   if (location.hash === "#staff") return renderStaff();
   document.documentElement.lang = s.lang;
+  document.body.dataset.view = "kiosk";
   nav.hidden = s.screen !== "welcome";
   nav.innerHTML = icon("people") + "<span>Staff desk</span>";
   nav.setAttribute("href", "#staff");
@@ -804,7 +857,7 @@ function render() {
   root.innerHTML = view() + idleOverlay();
   if (shownScreen !== s.screen) {
     shownScreen = s.screen;
-    root.querySelector("h2, .token")?.focus({ preventScroll: true });
+    root.querySelector("h1, h2")?.focus({ preventScroll: true });
   }
   s.flash = null;
 }
@@ -918,7 +971,8 @@ function enterStaff() {
   staff.es.onmessage = e => {
     staff.records = JSON.parse(e.data) || [];
     staff.live = true;
-    if (!staff.open) renderStaff(); else liveBadge();
+    // With a record open, refresh only the queue so typed corrections survive.
+    if (staff.open) refreshQueue(); else renderStaff();
   };
   renderStaff();
 }
@@ -934,78 +988,111 @@ function liveBadge() {
 }
 
 function liveHTML() {
-  return `<span id="live" class="live ${staff.live ? "on" : ""}"><i></i>${staff.live ? "Live" : "Reconnecting…"}</span>`;
+  return `<span id="live" class="live ${staff.live ? "on" : ""}"><i></i>${staff.live ? "Live from the kiosk" : "Reconnecting…"}</span>`;
 }
 
 const statusClass = st => "st-" + STATUSES.indexOf(st);
+const clock = iso => new Date(iso).toLocaleTimeString("en-IN", { timeStyle: "short" });
 
-function recordCard(r) {
-  const a = r.answers;
-  return `<article class="record">
-    <div class="record-top"><span class="pill ${statusClass(r.status)}">${esc(r.status)}</span>
-      <span class="small">${esc(r.id)} · ${esc(new Date(r.createdAt).toLocaleTimeString("en-IN", { timeStyle: "short" }))}</span></div>
-    <h3>${esc(r.token || "No token yet")} · ${esc(a.name || "Name not given")} ${latin(a.name)}</h3>
-    <p>${esc(a.age || "Age —")} · ${esc(a.village || "Village —")} ${latin(a.village)}</p>
-    <p class="complaint">${esc(r.raw?.complaint || a.complaint || "Complaint not given")}</p>
-    ${r.gloss ? `<p class="small">Key words: ${esc(r.gloss)}</p>` : ""}
-    ${r.reason ? `<p class="small">Reason: ${esc(r.reason)}</p>` : ""}
-    <p class="small">Department: <b>${esc(r.department)}</b> ${r.status === "Registered" ? "(confirmed)" : "(suggested)"}</p>
-    <div class="actions">${ibtn("open-" + r.id, "edit", r.status === "Registered" ? "Edit" : "Review and confirm", r.status === "Registered" ? "tonal" : "primary")}${r.token ? ibtn("print-" + r.id, "print", "Print slip", "text") : ""}</div>
-  </article>`;
+function sortedRecords() {
+  const order = r => STATUSES.indexOf(r.status);
+  return staff.records.slice().sort((a, b) => order(a) - order(b) || b.createdAt.localeCompare(a.createdAt));
 }
 
-function staffList() {
-  const order = r => STATUSES.indexOf(r.status);
-  const rows = staff.records.slice().sort((a, b) => order(a) - order(b) || b.createdAt.localeCompare(a.createdAt));
+function queueRow(r) {
+  const a = r.answers;
+  const action = r.status === "Needs Assistance" ? ibtn("open-" + r.id, "help", "Help now", "danger small")
+    : r.status === "Awaiting Department Review" ? ibtn("open-" + r.id, "check", "Review", "primary small")
+    : ibtn("open-" + r.id, "edit", "Edit", "text small");
+  return `<tr class="${staff.open === r.id ? "is-open" : ""}">
+    <td><span class="pill ${statusClass(r.status)}">${esc(r.status)}</span></td>
+    <td class="num">${esc(r.token || "—")}</td>
+    <td><b>${esc(a.name || "Name not given")}</b> ${latin(a.name)}<span class="sub">${esc(a.age || "age —")} · ${esc(a.village || "village —")} ${latin(a.village)}</span></td>
+    <td class="complaint">${esc(r.raw?.complaint || a.complaint || "—")}${r.gloss ? `<span class="sub">${esc(r.gloss)}</span>` : ""}${r.reason ? `<span class="sub reason">${esc(r.reason)}</span>` : ""}</td>
+    <td class="wide">${esc(r.department)}<span class="sub">${r.status === "Registered" ? "confirmed" : "suggested"}</span></td>
+    <td class="num wide">${esc(clock(r.createdAt))}</td>
+    <td class="act">${action}${r.token ? ibtn("print-" + r.id, "print", "Print", "text small") : ""}</td>
+  </tr>`;
+}
+
+function queueHTML() {
+  const rows = sortedRecords();
   const shownRows = staff.filter === "All" ? rows : rows.filter(r => r.status === staff.filter);
+  const body = shownRows.length
+    ? `<table class="queue"><thead><tr><th>Status</th><th class="num">Token</th><th>Patient</th><th>Complaint</th><th class="wide">Department</th><th class="num wide">Time</th><th><span class="sr">Actions</span></th></tr></thead>
+       <tbody>${shownRows.map(queueRow).join("")}</tbody></table>`
+    : `<div class="empty"><p><b>${rows.length ? "Nothing with this status." : "No one in the queue yet."}</b></p><p>New registrations and help requests appear here the moment a patient finishes at the kiosk.</p></div>`;
+  return `<div id="queue">${body}</div>`;
+}
+
+function refreshQueue() {
+  const el = document.querySelector("#queue");
+  if (el) el.outerHTML = queueHTML();
+  const head = document.querySelector("#finding");
+  if (head) head.outerHTML = findingHTML();
+  liveBadge();
+}
+
+// The line under the title says what needs attention first.
+function findingHTML() {
+  const help = staff.records.filter(r => r.status === "Needs Assistance").length;
+  const review = staff.records.filter(r => r.status === "Awaiting Department Review").length;
+  const done = staff.records.filter(r => r.status === "Registered").length;
+  const text = help ? `${help} ${help === 1 ? "patient is" : "patients are"} waiting for help` : review ? `${review} to review, nobody waiting for help` : "Queue clear";
+  return `<p id="finding" class="finding ${help ? "urgent" : ""}">${esc(text)} · ${review} awaiting department · ${done} registered</p>`;
+}
+
+function staffSheet(r) {
+  const input = f => f === "complaint"
+    ? `<textarea id="f-${f}" name="${f}" required maxlength="500" rows="3">${esc(r.answers[f])}</textarea>`
+    : `<input id="f-${f}" name="${f}" required maxlength="500" value="${esc(r.answers[f])}">`;
+  const fields = FIELDS.map(f => `<div class="field"><label for="f-${f}">${esc(STAFF_LABELS[f])}</label>${input(f)}
+      ${r.raw?.[f] ? `<p class="said">Patient said “${esc(r.raw[f])}”</p>` : ""}</div>`).join("");
+  return `<aside class="sheet" aria-label="Record ${esc(r.id)}">
+    <div class="sheet-head"><div><h2 tabindex="-1">${esc(r.token || "Assisted registration")}</h2>
+      <p class="sub">${esc(r.id)} · <span class="pill ${statusClass(r.status)}">${esc(r.status)}</span></p></div>
+      ${ibtn("back", "close", "Close", "text")}</div>
+    ${r.reason ? `<p class="alert">${icon("warning")}<span>${esc(r.reason)}</span></p>` : ""}
+    <form id="staffform">${fields}
+      <div class="field"><label for="dept">Department</label>
+      <select id="dept" name="department">${["General OPD", "Dental", "ENT"].map(d => `<option ${d === r.department ? "selected" : ""}>${d}</option>`).join("")}</select>
+      <p class="said">Mock routing: only explicit dentist or ENT requests are suggested; everything else is General OPD.</p></div>
+      <div class="actions"><button class="primary" type="submit">${icon("check")}<span>Confirm and register</span></button>${r.token ? ibtn("print-" + r.id, "print", "Print slip", "outlined") : ""}</div>
+    </form>
+    ${staff.note ? `<p class="ok" role="status">${esc(staff.note)}</p>` : ""}
+  </aside>`;
+}
+
+function renderStaff() {
+  document.documentElement.lang = "en";
+  document.body.dataset.view = "staff";
+  nav.hidden = false;
+  nav.innerHTML = icon("back") + "<span>Patient kiosk</span>";
+  nav.setAttribute("href", "#");
+  const rows = staff.records;
   const chips = ["All", ...STATUSES].map(st => {
     const n = st === "All" ? rows.length : rows.filter(r => r.status === st).length;
     const on = staff.filter === st;
     return `<button type="button" data-act="filter-${st}" class="chip" aria-pressed="${on}">${on ? icon("check") : ""}<span>${esc(st)} · ${n}</span></button>`;
   }).join("");
-  return `<section class="staff">
-    <div class="staff-head"><div><p class="kicker">Registration desk</p><h2 tabindex="-1">Staff dashboard</h2></div>${liveHTML()}</div>
-    <p class="note">Shared demo storage on this server. Fictional data only. Department routing is mock and administrative.</p>
-    <div class="chips">${chips}</div>
-    <div class="records">${shownRows.map(recordCard).join("") || "<p>No registrations yet.</p>"}</div>
-  </section>`;
-}
-
-function staffForm(r) {
-  const input = f => f === "complaint"
-    ? `<textarea id="f-${f}" name="${f}" required maxlength="500" rows="3">${esc(r.answers[f])}</textarea>`
-    : `<input id="f-${f}" name="${f}" required maxlength="500" value="${esc(r.answers[f])}">`;
-  const fields = FIELDS.map(f => `<label for="f-${f}">${esc(STAFF_LABELS[f])}</label>${input(f)}
-      ${r.raw?.[f] ? `<p class="small">Patient said: “${esc(r.raw[f])}”</p>` : ""}`).join("");
-  return `<section class="staff">
-    <div class="staff-head"><div><p class="kicker">${esc(r.id)} · <span class="pill ${statusClass(r.status)}">${esc(r.status)}</span></p>
-      <h2 tabindex="-1">${esc(r.token || "Assisted registration")}</h2></div>${liveHTML()}</div>
-    ${r.reason ? `<p class="alert">Reason: ${esc(r.reason)}</p>` : ""}
-    <form id="staffform">${fields}
-      <label for="dept">Department</label>
-      <select id="dept" name="department">${["General OPD", "Dental", "ENT"].map(d => `<option ${d === r.department ? "selected" : ""}>${d}</option>`).join("")}</select>
-      <p class="small">Suggested by mock rules: explicit dentist or ENT requests only, everything else General OPD.</p>
-      <div class="actions"><button class="primary" type="submit">${icon("check")}<span>Confirm details and department</span></button></div>
-    </form>
-    ${staff.note ? `<p class="ok" role="status">${esc(staff.note)}</p>` : ""}
-    <div class="actions">${ibtn("back", "back", "Back to dashboard", "text")}${r.token ? ibtn("print-" + r.id, "print", "Print slip", "tonal") : ""}</div>
-  </section>`;
-}
-
-function renderStaff() {
-  document.documentElement.lang = "en";
-  nav.hidden = false;
-  nav.innerHTML = icon("back") + "<span>Patient kiosk</span>";
-  nav.setAttribute("href", "#");
-  const r = staff.open && staff.records.find(x => x.id === staff.open);
-  root.innerHTML = r ? staffForm(r) : staffList();
+  const r = staff.open && rows.find(x => x.id === staff.open);
+  root.innerHTML = `<div class="desk ${r ? "has-sheet" : ""}">
+    <section class="staff">
+      <div class="staff-head"><h1 tabindex="-1">Registration desk</h1>${liveHTML()}</div>
+      ${findingHTML()}
+      <div class="chips">${chips}</div>
+      ${queueHTML()}
+      <p class="note">Demo data on this server only. Department routing is mock and administrative, never a diagnosis.</p>
+    </section>
+    ${r ? staffSheet(r) : ""}
+  </div>`;
 }
 
 function staffClick(e) {
   const el = e.target.closest("[data-act]");
   if (!el) return;
   const act = el.dataset.act;
-  if (act.startsWith("open-")) { staff.open = act.slice(5); staff.note = ""; return renderStaff(); }
+  if (act.startsWith("open-")) { staff.open = act.slice(5); staff.note = ""; renderStaff(); return document.querySelector(".sheet h2")?.focus(); }
   if (act.startsWith("print-")) return printSlip(staff.records.find(x => x.id === act.slice(6)));
   if (act.startsWith("filter-")) { staff.filter = act.slice(7); return renderStaff(); }
   if (act === "back") { staff.open = null; staff.note = ""; return renderStaff(); }
@@ -1020,7 +1107,7 @@ root.addEventListener("submit", async e => {
   try {
     const r = await api("PATCH", "/api/records/" + encodeURIComponent(staff.open), { answers, department: form.get("department") });
     staff.records = staff.records.map(x => (x.id === r.id ? r : x));
-    staff.note = `Saved. ${r.token} is Registered for ${r.department}.`;
+    staff.note = `Saved. ${r.token} is registered for ${r.department}.`;
   } catch (err) {
     staff.note = "Could not save: " + err.message;
   }
