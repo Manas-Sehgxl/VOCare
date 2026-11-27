@@ -1,34 +1,64 @@
 # Bol OPD
 
-A voice-first outpatient registration kiosk for a district hospital. Patients can answer four questions in Hindi or English, hear the record, correct a detail and receive a numbered slip. A staff view on the same browser can finish assistance requests and confirm the department.
+A voice-first OPD registration kiosk for a government hospital. A patient speaks their name, age, village and problem in Hindi, English or a mix of the two, hears it read back, corrects anything that was misheard and gets a token. They never type. A staff dashboard on any other device sees each registration and help request as it happens.
 
 ## Run
-
-From this directory with Docker and its Compose plugin installed:
 
 ```sh
 docker compose up --build
 ```
 
-Open **http://localhost:3000**. The first build needs internet access to download the NGINX image. The app has no API keys, environment variables, .env file, package install or model download. To stop, run `docker compose down`.
+Open **http://localhost:3000**. The staff dashboard is at **http://localhost:3000/#staff** (open it in another tab or on another device on the same network).
 
-For local development with Python 3, run `python3 -m http.server 3000 --directory dist` and open the same address.
+No API keys, no `.env` file and no model downloads are needed. `.env.example` lists the optional settings. Records are kept in a Docker volume; `docker compose down -v` removes them.
+
+Without Docker, with Go 1.23 or newer:
+
+```sh
+go run ./server          # serves dist/ on :3000
+go test ./server         # store, tokens, department rules
+node --test test/*.mjs   # speech parsing (Node 20+)
+```
 
 ## Try it
 
-1. Choose **Try the sample** and **Begin registration**. **Use sample answer** supplies fictional utterances for name, age, village and complaint.
-2. In Review, choose **Change village** and **Use sample answer**. Rampur changes to Ramnagar. Confirm to issue one token, then print or finish.
-3. Open **Staff desk** to review the record. Confirm the details and choose the department. Open a second tab on the same origin to see new requests while a patient registers.
-4. To test failure handling, start another sample and select **Try background noise** twice, then **Ask staff for help**. The desk receives the available details. No token is issued until registration is complete.
+Switch on **Demo mode** on the welcome screen to use buttons that stand in for speech. They are labelled as simulated, and each one is passed through the same parser as live speech.
 
-## Live voice
+1. **Hindi registration.** Tap हिन्दी, then the demo answers in order: हाँ → “मेरा नाम सावित्री देवी है” → “लगभग पचपन साल” → “रामपुर” → “पेट में तीन दिन से दर्द है”. The kiosk shows *Name: सावित्री देवी (Savitri Devi)*, *Age: लगभग 55*, and keeps the complaint word for word.
+2. **Village correction.** On the review screen pick “गाँव रामपुर नहीं, रामनगर है”. Only the village changes, the kiosk says “गाँव अब रामनगर है। क्या अब सब सही है?”, and “हाँ, सही है” issues OPD-001.
+3. **Edge cases (English).** “Savitri Devi · unclear accent” is read back for confirmation. “Pata nahi” for age asks again. “Age sixty hai” is 60. “Sultanpur” asks for the district. “Galat hai” asks which detail to change.
+4. **Failures.** Press *Background noise* twice, or *Silence*. Noise repeats only the current question; silence offers more time; a second failure offers staff help and sends what was already given to the dashboard as *Needs Assistance*.
+5. **Staff.** On `#staff`, correct any detail, confirm the department and print the slip. The status becomes *Registered*.
 
-Use **Start registration** on localhost or HTTPS with microphone permission and a browser supporting SpeechRecognition or webkitSpeechRecognition. Choose Hindi or English and approve voice capture. The browser reads prompts using speechSynthesis if available and listens after each prompt. Speak one answer per question; at review, say “change village” or “गाँव बदलें”, give the correction, then say “yes” or “सही है”. Touch controls also work. Recognition, installed voices and network requirements vary by browser and device. The sample works with microphone permission denied or recognition unavailable.
+With demo mode off, Chrome or Edge on localhost (or HTTPS) listens through the microphone after every prompt. You can say “दोबारा” or “repeat”, “मदद” or “help”, and “गलत है”, or use the buttons at the bottom of the screen.
 
-## Prototype boundaries
+## How it works
 
-Use fictional patient details. This demo persists records in localStorage on this browser, including after Finish clears the kiosk screen. Staff and patient tabs must share the same origin and browser profile. There is no staff authentication, central database or hospital integration. Clear the site's browser storage to remove demo records. The application does not save raw audio. In live mode the browser's speech provider may process audio remotely.
+```
+dist/          static kiosk + staff app (no build step, no framework)
+  app.js       conversation state machine, voice loop, screens, staff desk
+  parse.js     turns speech into fields: names, Hindi/English number words,
+               corrections, yes/no/help/repeat, a complaint glossary
+  text.js      every prompt in English and Hindi, plus the demo utterances
+server/        Go standard library only
+  main.go      static files, JSON API, Server-Sent Events for the dashboard
+  store.go     records, sequential tokens, mock department rules, JSON file
+```
 
-Department suggestions use simple rules for explicit dentist or ENT requests; other complaints go to General OPD for staff review. The original utterance remains on the record. Routing is administrative and requires a staff decision. No medical model or paid API is involved.
+- **Speech** uses the browser's Web Speech API: `SpeechRecognition` (hi-IN / en-IN) and `speechSynthesis`. The kiosk shows whether it is listening, processing or speaking.
+- **Nothing is guessed silently.** Low-confidence results are treated as noise and never fill a field. Names and places heard with medium confidence are read back first. Age keeps “approximately”. Village names are stored as spoken, and Devanagari names get an automatic Latin spelling *next to* the original, never in place of it.
+- **One registration per patient.** Each kiosk session has an ID, and the server returns the existing token if a confirmation is repeated.
+- **Department routing is mock and administrative.** Only explicit requests (“dentist”, “ENT doctor”) suggest Dental or ENT; everything else is General OPD for staff to review. There is no diagnosis, treatment advice or waiting time.
+- **Privacy.** No audio is recorded or stored. The kiosk clears itself after Finish or Cancel, 60 seconds after showing a token, and after 90 seconds without activity (with a spoken warning). No phone number, email or Aadhaar is asked for.
 
-The pilot would measure arrival-to-token time, independent completion and errors after confirmation. The prototype has no analytics service. A hospital deployment would need supervised language testing, private audio, authenticated staff access and agreed retention policies.
+## Dependencies and fallbacks
+
+| Depends on | If it becomes costly or stops working |
+|---|---|
+| Browser speech recognition (Chrome sends audio to Google; Firefox has none) | Demo mode and touch controls still work. Next step: an on-premise Indian-language model (AI4Bharat IndicConformer, or Vosk for Hindi) behind the same `handle(text, confidence)` entry point. |
+| Browser text-to-speech voices | Every prompt is also on screen; a missing voice skips speech without stalling. Pre-recorded prompt audio is a cheap replacement. |
+| Go server + JSON file | Runs on any small machine in the hospital LAN with no internet. |
+
+## Prototype limits
+
+Fictional data only. There is no staff login, no hospital system integration and no backup. The number-word list, district list and complaint glossary are small demo lists. A real pilot needs supervised testing with regional accents, a noise-cancelling microphone, authenticated staff access and an agreed retention policy.
