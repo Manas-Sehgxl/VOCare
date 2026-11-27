@@ -12,6 +12,7 @@
   <img alt="Languages" src="https://img.shields.io/badge/speech-Hindi%20·%20English%20·%20mixed-e8672a">
   <img alt="API keys" src="https://img.shields.io/badge/API%20keys-none-3a4fb0">
   <img alt="Built for" src="https://img.shields.io/badge/built%20for-Scaler%20x%20Wispr%20Flow-7a3f98">
+  <img alt="Licence" src="https://img.shields.io/badge/licence-MIT-141414">
 </p>
 
 # VOCare
@@ -89,6 +90,16 @@ server/        Go standard library only
 | Browser text-to-speech voices | Every prompt is also on screen; a missing voice skips speech without stalling. Pre-recorded prompt audio is a cheap replacement. |
 | Go server + JSON file | Runs on any small machine in the hospital LAN with no internet. |
 
+## What's next (planned, not built)
+
+- **Phone helpline.** Call a number from home and register by voice with the same questions and corrections, then collect the token at the OPD window. The conversation already runs through one `handle(text, confidence)` entry point, so a phone line needs speech-to-text and text-to-speech on a call, not a new flow.
+- **More Indian languages**, each in its own script.
+- **Wispr Flow as the main voice input**, and an on-premise Indian-language speech model behind the same entry point.
+
 ## Prototype limits
 
 Fictional data only. There is no staff login, no hospital system integration and no backup. The number-word list, district list and complaint glossary are small demo lists. A real pilot needs supervised testing with regional accents, a noise-cancelling microphone, authenticated staff access and an agreed retention policy.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). Fonts in `dist/fonts` are under the SIL Open Font License.
