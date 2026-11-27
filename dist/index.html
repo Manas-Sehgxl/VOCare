@@ -1,16 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="hi">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f3f5ef">
-<title>Bol OPD · Registration desk</title>
+<meta name="theme-color" content="#e9efea">
+<title>Bol OPD · Registration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="style.css">
-<script defer src="app.js"></script>
+<script type="module" src="app.js"></script>
 </head>
 <body>
-<header><a class="brand" href="./" aria-label="Bol OPD home"><span class="mark" aria-hidden="true">✚</span> Bol <b>OPD</b></a><nav><button id="nav"></button></nav></header>
-<main id="app"></main><div role="status" class="sr" id="status"></div>
-<footer><span>Bol OPD &nbsp; / &nbsp; District hospital prototype</span><span>Fictional patient details only</span></footer>
-<template id="wave"><div class="wave" aria-hidden="true"></div></template>
-</body></html>
+<header>
+  <a class="brand" href="./" aria-label="Bol OPD home"><span class="mark" aria-hidden="true">✚</span> Bol <b>OPD</b></a>
+  <a id="nav" class="nav" href="#staff">Staff desk</a>
+</header>
+<main id="app"></main>
+<div role="status" aria-live="polite" class="sr" id="status"></div>
+<footer><span>Bol OPD · District hospital prototype</span><span>Fictional patient details only · no audio is stored</span></footer>
+<div id="print" aria-hidden="true"></div>
+<noscript>Bol OPD needs JavaScript.</noscript>
+</body>
+</html>
