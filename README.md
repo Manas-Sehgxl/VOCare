@@ -1,6 +1,6 @@
 # VOCare
 
-A voice-first OPD registration kiosk for a government hospital. A patient speaks their name, age, village and problem in Hindi, English or a mix of the two, hears it read back, corrects anything that was misheard and gets a token. They never type. A staff dashboard on any other device sees each registration and help request as it happens.
+A voice-first OPD registration kiosk for a government hospital. A patient speaks their name, age, sex, village and problem in Hindi, English or a mix of the two, hears it read back, corrects anything that was misheard and gets a token. They never type. A staff dashboard on any other device sees each registration and help request as it happens.
 
 ## Run
 
@@ -24,7 +24,7 @@ node --test test/*.mjs   # speech parsing (Node 20+)
 
 Switch on **Demo mode** on the welcome screen to use buttons that stand in for speech. They are labelled as simulated, and each one is passed through the same parser as live speech.
 
-1. **Hindi registration.** Tap हिन्दी, then the demo answers in order: हाँ → “मेरा नाम सावित्री देवी है” → “लगभग पचपन साल” → “रामपुर” → “पेट में तीन दिन से दर्द है”. The kiosk shows *Name: सावित्री देवी (Savitri Devi)*, *Age: लगभग 55*, and keeps the complaint word for word.
+1. **Hindi registration.** Tap हिन्दी, then the demo answers in order: हाँ → “मेरा नाम सावित्री देवी है” → “लगभग पचपन साल” → “महिला” → “रामपुर” → “पेट में तीन दिन से दर्द है”. The kiosk shows *Name: सावित्री देवी (Savitri Devi)*, *Age: लगभग 55*, *Sex: महिला (Female)*, and keeps the complaint word for word.
 2. **Village correction.** On the review screen pick “गाँव रामपुर नहीं, रामनगर है”. Only the village changes, the kiosk says “गाँव अब रामनगर है। क्या अब सब सही है?”, and “हाँ, सही है” issues OPD-001.
 3. **Edge cases (English).** “Savitri Devi · unclear accent” is read back for confirmation. “Pata nahi” for age asks again. “Age sixty hai” is 60. “Sultanpur” asks for the district. “Galat hai” asks which detail to change.
 4. **Failures.** Press *Background noise* twice, or *Silence*. Noise repeats only the current question; silence offers more time; a second failure offers staff help and sends what was already given to the dashboard as *Needs Assistance*.

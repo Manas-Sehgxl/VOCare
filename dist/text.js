@@ -4,6 +4,7 @@
 export const LABELS = {
   name: ["Name", "नाम"],
   age: ["Age", "उम्र"],
+  sex: ["Sex", "लिंग"],
   village: ["Village", "गाँव"],
   complaint: ["Problem", "तकलीफ़"],
 };
@@ -11,6 +12,7 @@ export const LABELS = {
 export const QUESTIONS = {
   name: ["What is your name?", "आपका नाम क्या है?"],
   age: ["How old are you?", "आपकी उम्र कितनी है?"],
+  sex: ["Are you a man, a woman, or other?", "आप पुरुष हैं, महिला हैं, या अन्य?"],
   village: ["Which village or area are you from?", "आप किस गाँव या मोहल्ले से हैं?"],
   complaint: ["What problem are you having?", "आपको क्या तकलीफ़ हो रही है?"],
 };
@@ -19,12 +21,13 @@ export const TEXT = {
   greet: ["Namaste. For registration, say Hindi or English.", "नमस्ते। रजिस्ट्रेशन के लिए हिंदी या इंग्लिश बोलिए।"],
   chooseLang: ["Please say Hindi or English, or touch one.", "कृपया हिंदी या इंग्लिश बोलिए, या स्क्रीन पर छुइए।"],
   consentTitle: ["May we write down your details?", "क्या हम आपकी जानकारी लिखें?"],
-  consent: ["From what you say, we will write down your name, age, village and problem. Shall we start?",
-    "हम आपकी बात से नाम, उम्र, गाँव और तकलीफ़ लिखेंगे। क्या शुरू करें?"],
+  consent: ["From what you say, we will write down your name, age, sex, village and problem. Shall we start?",
+    "हम आपकी बात से नाम, उम्र, लिंग, गाँव और तकलीफ़ लिखेंगे। क्या शुरू करें?"],
   consentNote: ["Demo only, use made-up details. No audio is kept.", "सिर्फ़ डेमो, काल्पनिक जानकारी दें। आवाज़ रिकॉर्ड नहीं होती।"],
   declined: ["That's all right. Would you like a staff member to help you?", "कोई बात नहीं। क्या आप कर्मचारी की मदद चाहेंगे?"],
   ackName: [n => `Thank you, ${n}.`, n => `धन्यवाद, ${n} जी।`],
   ackAge: [a => `Age ${a}, noted.`, a => `उम्र ${a} साल, लिख ली।`],
+  ackSex: [v => `${v}, noted.`, v => `${v}, लिख लिया।`],
   ackVillage: [v => `${v}, noted.`, v => `${v}, लिख लिया।`],
   ackComplaint: ["Thank you. I have written down your problem in your words.", "धन्यवाद। आपकी तकलीफ़ आपके शब्दों में लिख ली है।"],
   heardConfirm: [v => `I heard ${v}. Is that right?`, v => `मैंने सुना: ${v}। क्या यह सही है?`],
@@ -34,6 +37,7 @@ export const TEXT = {
   nameAgain: ["I did not catch your name.", "आपका नाम समझ नहीं आया।"],
   ageAgain: ["I could not understand the age. You can say it in years, like fifty years.",
     "उम्र समझ नहीं आई। साल में बताइए, जैसे पचास साल।"],
+  sexAgain: ["Please say man, woman, or other.", "कृपया पुरुष, महिला या अन्य बोलिए।"],
   villageAgain: ["I did not catch the village name.", "गाँव का नाम समझ नहीं आया।"],
   complaintAgain: ["Please tell me what problem you are having.", "कृपया बताइए आपको क्या तकलीफ़ है।"],
   district: [v => `There are several places called ${v}. Which district is it in?`, v => `${v} नाम की कई जगहें हैं। कौन सा ज़िला है?`],
@@ -42,7 +46,7 @@ export const TEXT = {
   isCorrect: ["Is this correct?", "क्या यह सही है?"],
   allCorrectNow: ["Is everything correct now?", "क्या अब सब सही है?"],
   reviewAgain: ["Say yes if it is correct, or tell me what to change.", "सही है तो हाँ बोलिए, या बताइए क्या बदलना है।"],
-  whichField: ["Which detail should I change: name, age, village or problem?", "कौन सी जानकारी बदलनी है? नाम, उम्र, गाँव या तकलीफ़?"],
+  whichField: ["Which detail should I change: name, age, sex, village or problem?", "कौन सी जानकारी बदलनी है? नाम, उम्र, लिंग, गाँव या तकलीफ़?"],
   changed: [(l, v) => `${l} is now ${v}.`, (l, v) => `${l} अब ${v} है।`],
   sayNew: [l => `Please tell me the correct ${l.toLowerCase()}.`, l => `कृपया सही ${l} बताइए।`],
   moreTime: ["Do you need more time? Say yes, or say help for a staff member.",
@@ -128,6 +132,10 @@ export const SAMPLES = {
   age: {
     hi: [{ text: "लगभग पचपन साल" }, { text: "एज सिक्सटी है", note: "mixed" }, { text: "पता नहीं", note: "not a number" }],
     en: [{ text: "Lagbhag pachpan saal" }, { text: "Age sixty hai", note: "mixed" }, { text: "Pata nahi", note: "not a number" }],
+  },
+  sex: {
+    hi: [{ text: "महिला" }, { text: "मैं औरत हूँ", note: "in a sentence" }],
+    en: [{ text: "Female" }, { text: "Mahila", note: "Hindi word" }],
   },
   village: {
     hi: [{ text: "रामपुर", note: "misheard" }, { text: "रामनगर", conf: 0.6, note: "unclear accent" }, { text: "सुल्तानपुर", note: "ambiguous" }],

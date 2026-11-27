@@ -216,8 +216,8 @@ function readback() {
   const a = s.answers;
   const complaint = (a.complaint || "").replace(/[।.!?\s]+$/, "");
   return s.lang === "hi"
-    ? `${a.name}, उम्र ${spokenAge()} साल, गाँव ${a.village}। ${complaint}। क्या यह सही है?`
-    : `${a.name}, age ${spokenAge()}, village ${a.village}. ${complaint}. Is this correct?`;
+    ? `${a.name}, उम्र ${spokenAge()} साल, ${P.sexLabel(a.sex, "hi")}, गाँव ${a.village}। ${complaint}। क्या यह सही है?`
+    : `${a.name}, age ${spokenAge()}, ${(a.sex || "").toLowerCase()}, village ${a.village}. ${complaint}. Is this correct?`;
 }
 
 function tokenSpeech() {
@@ -322,6 +322,7 @@ function parseField(f, text) {
   switch (f) {
     case "name": { const v = P.parseName(text); return v && !bare ? { value: v } : null; }
     case "age": { const info = P.parseAge(text); return info ? { value: P.formatAge(info, "en"), info } : null; }
+    case "sex": { const v = P.parseSex(text); return v ? { value: v } : null; }
     case "village": { const v = P.parseVillage(text); return v && !bare ? { value: v } : null; }
     case "complaint": return text.length >= 3 && !bare ? { value: text } : null;
   }
@@ -358,6 +359,7 @@ function commit(f, value, raw, info) {
   const ack = {
     name: () => t("ackName", value),
     age: () => t("ackAge", spokenAge()),
+    sex: () => t("ackSex", P.sexLabel(value, s.lang)),
     village: () => t("ackVillage", value),
     complaint: () => t("ackComplaint"),
   }[f]();
@@ -384,7 +386,7 @@ function applyCorrection(f, said) {
   const r = parseField(f, said);
   if (!r) return editField(f);
   store(f, r.value, said, r.info);
-  const msg = t("changed", label(f), f === "age" ? spokenAge() : r.value);
+  const msg = t("changed", label(f), f === "age" ? spokenAge() : f === "sex" ? P.sexLabel(r.value, s.lang) : r.value);
   if (s.screen === "review") {
     render();
     return ask(msg + " " + t("allCorrectNow"));
@@ -634,6 +636,7 @@ function latin(v) {
 }
 
 function shown(f) {
+  if (f === "sex") return P.sexLabel(s.answers.sex, s.lang);
   return f === "age" && s.ageInfo ? P.formatAge(s.ageInfo, s.lang) : s.answers[f];
 }
 
@@ -720,7 +723,7 @@ function slip({ editable = false, record = null } = {}) {
     ? `<div class="slip-token"><span>${esc(t("tokenTitle"))}</span><strong>${esc(record.token)}</strong></div>`
     : `<p class="slip-foot">${esc(t("tokenLater"))}</p>`;
   return `<aside class="slip" aria-label="${esc(t("slipTitle"))}">
-    <h3>${esc(t("slipTitle"))}</h3><p class="slip-sub">${esc(record ? t("slipDone") : now ? t("step", s.step + 1, 4) + " · " + t("slipSub") : t("slipSub"))}</p>
+    <h3>${esc(t("slipTitle"))}</h3><p class="slip-sub">${esc(record ? t("slipDone") : now ? t("step", s.step + 1, FIELDS.length) + " · " + t("slipSub") : t("slipSub"))}</p>
     ${rows}${foot}</aside>`;
 }
 
@@ -942,6 +945,7 @@ function slipHTML(r) {
       ${row("Date", esc(when))}
       ${row("Name", esc(r.answers.name) + " " + latin(r.answers.name))}
       ${row("Age", esc(r.answers.age))}
+      ${row("Sex", esc(r.answers.sex || "—"))}
       ${row("Village", esc(r.answers.village) + " " + latin(r.answers.village))}
       ${row("Complaint (patient's words)", esc(r.raw?.complaint || r.answers.complaint))}
       ${r.gloss ? row("Key words", esc(r.gloss)) : ""}
@@ -961,7 +965,7 @@ function printSlip(r) {
 // ---------- staff desk ----------
 
 const STATUSES = ["Needs Assistance", "Awaiting Department Review", "Registered"];
-const STAFF_LABELS = { name: "Name", age: "Age", village: "Village or locality", complaint: "Complaint (patient's words)" };
+const STAFF_LABELS = { name: "Name", age: "Age", sex: "Sex", village: "Village or locality", complaint: "Complaint (patient's words)" };
 const staff = { records: [], open: null, es: null, live: false, filter: "All", note: "" };
 
 function enterStaff() {
@@ -1012,7 +1016,7 @@ function queueRow(r) {
   return `<tr class="${staff.open === r.id ? "is-open" : ""}">
     <td><span class="pill ${statusClass(r.status)}">${esc(r.status)}</span></td>
     <td class="num">${esc(r.token || "—")}</td>
-    <td><b>${esc(a.name || "Name not given")}</b> ${latin(a.name)}<span class="sub">${esc(a.age || "age —")} · ${esc(a.village || "village —")} ${latin(a.village)}</span></td>
+    <td><b>${esc(a.name || "Name not given")}</b> ${latin(a.name)}<span class="sub">${esc(a.age || "age —")} · ${esc(a.sex || "sex —")} · ${esc(a.village || "village —")} ${latin(a.village)}</span></td>
     <td class="complaint">${esc(r.raw?.complaint || a.complaint || "—")}${r.gloss ? `<span class="sub">${esc(r.gloss)}</span>` : ""}${r.reason ? `<span class="sub reason">${esc(r.reason)}</span>` : ""}</td>
     <td class="wide dept-cell">${esc(r.department)}<span class="sub">${r.status === "Registered" ? "confirmed" : "suggested"}</span></td>
     <td class="num wide">${esc(clock(r.createdAt))}</td>
@@ -1109,7 +1113,7 @@ root.addEventListener("submit", async e => {
   e.preventDefault();
   const form = new FormData(e.target);
   const answers = Object.fromEntries(FIELDS.map(f => [f, String(form.get(f) || "").trim()]));
-  if (FIELDS.some(f => !answers[f])) { staff.note = "Fill in all four details before confirming."; return renderStaff(); }
+  if (FIELDS.some(f => !answers[f])) { staff.note = "Fill in all five details before confirming."; return renderStaff(); }
   try {
     const r = await api("PATCH", "/api/records/" + encodeURIComponent(staff.open), { answers, department: form.get("department") });
     staff.records = staff.records.map(x => (x.id === r.id ? r : x));

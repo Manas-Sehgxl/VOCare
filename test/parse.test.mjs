@@ -83,3 +83,23 @@ test("Devanagari names get a Latin reading aid", () => {
   assert.equal(P.translit("कमला"), "Kamla");
   assert.equal(P.translit("Ramnagar"), "");
 });
+
+test("sex is understood in Hindi, English and in a sentence", () => {
+  assert.equal(P.parseSex("महिला"), "Female");
+  assert.equal(P.parseSex("मैं औरत हूँ"), "Female");
+  assert.equal(P.parseSex("Mahila"), "Female");
+  assert.equal(P.parseSex("Female"), "Female");
+  assert.equal(P.parseSex("पुरुष हूँ"), "Male");
+  assert.equal(P.parseSex("aadmi"), "Male");
+  assert.equal(P.parseSex("अन्य"), "Other");
+  assert.equal(P.parseSex("man or woman"), null);
+  assert.equal(P.parseSex("पता नहीं"), null);
+  assert.equal(P.sexLabel("Female", "hi"), "महिला");
+  assert.equal(P.sexLabel("Female", "en"), "Female");
+  assert.deepEqual(P.parseCorrection("लिंग पुरुष नहीं, महिला है", { sex: "Male" }), { field: "sex", value: "महिला", old: "पुरुष" });
+});
+
+test("consent accepts yes however the recogniser spells it", () => {
+  for (const said of ["yes", "Yes, let's start", "यस", "येस", "यस्", "sure", "okay lets go", "हाँ जी"]) assert.equal(P.intent(said), "yes", said);
+  assert.equal(P.intent("नहीं"), "no");
+});

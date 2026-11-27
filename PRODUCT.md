@@ -14,7 +14,7 @@ web
 
 ## Product Purpose
 
-A voice-first OPD registration kiosk. The patient speaks name, age, village and complaint, hears it read back, corrects anything misheard, and receives a sequential token (OPD-001…). Staff see registrations and help requests live. Success (planned pilot targets, not measured): 30% lower median registration time, 80%+ of voice attempts completed without staff typing, under 2% of confirmed records needing later correction.
+A voice-first OPD registration kiosk. The patient speaks name, age, sex, village and complaint, hears it read back, corrects anything misheard, and receives a sequential token (OPD-001…). Staff see registrations and help requests live. Success (planned pilot targets, not measured): 30% lower median registration time, 80%+ of voice attempts completed without staff typing, under 2% of confirmed records needing later correction.
 
 ## Positioning
 

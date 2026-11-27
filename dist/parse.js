@@ -2,7 +2,7 @@
 // pure function of the text, so the same rules run for live speech, the
 // sample buttons and the tests in parse.test.mjs.
 
-export const FIELDS = ["name", "age", "village", "complaint"];
+export const FIELDS = ["name", "age", "sex", "village", "complaint"];
 
 // key() makes two spellings of the same word compare equal: lowercase,
 // no punctuation, nukta dropped (ज़ → ज) and chandrabindu read as anusvara
@@ -145,8 +145,9 @@ export function parseDistrict(text) {
 
 // ---------- intents ----------
 
-const YES = set(["haan|han|ha|haanji|hanji|ji|jee|yes|yeah|yep|sahi|thik|theek|ok|okay|confirm|correct|bilkul|right|done|shuru|start|chalo",
-  "हां|हाँ|जी|सही|ठीक|बिल्कुल|ओके|कन्फर्म|करेक्ट|शुरू|चलो|यस"]);
+// hi-IN recognisers often return English "yes" in Devanagari (यस, येस, यस्), so those count too.
+const YES = set(["haan|han|ha|haanji|hanji|ji|jee|yes|yess|yea|yeah|yep|yup|sure|alright|sahi|thik|theek|ok|okay|confirm|correct|bilkul|right|done|shuru|start|chalo|chaliye|go|ahead|accha|acha",
+  "हां|हाँ|हांजी|हाँजी|जी|सही|ठीक|बिल्कुल|ओके|कन्फर्म|करेक्ट|शुरू|चलो|चलिए|यस|येस|यस्|येस्|यप|श्योर|अच्छा"]);
 const NEG = set(["nahi|nahin|nai|nahee|na|no|not|nope|mat|dont", "नहीं|नही|ना|नो|मत"]);
 const WRONG = set(["galat|wrong|incorrect|mistake|galti", "गलत|ग़लत|गलती|रॉन्ग"]);
 const CHANGE = set(["change|badlo|badliye|badal|badle|badlein|sudhar|sudharo|sudhariye|edit|update|correction",
@@ -181,6 +182,7 @@ export function language(text) {
 const FIELD_WORDS = [
   set(["naam|nam|name", "नाम|नेम"]),
   set(["umar|umr|umra|age|aayu|ayu", "उम्र|उमर|एज|आयु"]),
+  set(["sex|gender|ling|jender|jendar", "लिंग|जेंडर|सेक्स"]),
   set(["gaon|gaanv|gav|gaav|village|mohalla|basti|jagah|address", "गांव|गाँव|गाव|मोहल्ला|बस्ती|जगह|विलेज|एड्रेस"]),
   set(["takleef|taklif|problem|complaint|pareshani|bimari|dikkat|takleef", "तकलीफ|तकलीफ़|परेशानी|बीमारी|दिक्कत|प्रॉब्लम"]),
 ];
@@ -192,6 +194,24 @@ export function fieldOf(text) {
   }
   return null;
 }
+
+// ---------- sex ----------
+
+// Stored in English (the staff desk and slip are English); the kiosk shows the Hindi word.
+export const SEX = { Male: "पुरुष", Female: "महिला", Other: "अन्य" };
+const SEX_WORDS = {
+  Female: set(["female|woman|women|lady|ladies|mahila|aurat|orat|stri|istri|ladki|f", "महिला|औरत|स्त्री|लड़की|लडकी|फीमेल|लेडी|लेडीज|लेडीज़|वुमन"]),
+  Male: set(["male|man|men|gents|purush|aadmi|admi|mard|ladka|m", "पुरुष|पुरूष|आदमी|मर्द|लड़का|लडका|मेल|मैन|जेंट्स"]),
+  Other: set(["other|others|anya|transgender|trans|kinnar|third|nonbinary", "अन्य|दूसरा|ट्रांसजेंडर|किन्नर|थर्ड"]),
+};
+// parseSex reads "mahila", "main aurat hoon", "Female" or "पुरुष हूँ". A reply naming two
+// different options ("man or woman?") is not an answer.
+export function parseSex(text) {
+  const ks = words(text).map(key);
+  const hits = Object.keys(SEX_WORDS).filter(k => ks.some(w => SEX_WORDS[k].has(w)));
+  return hits.length === 1 ? hits[0] : null;
+}
+export const sexLabel = (v, lang = "en") => lang === "hi" && SEX[v] ? SEX[v] : v;
 
 // ---------- corrections ----------
 

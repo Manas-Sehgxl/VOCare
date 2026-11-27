@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var savitri = Answers{Name: "Savitri Devi", Age: "approximately 55", Village: "Ramnagar", Complaint: "Pet mein teen din se dard hai"}
+var savitri = Answers{Name: "Savitri Devi", Age: "approximately 55", Sex: "Female", Village: "Ramnagar", Complaint: "Pet mein teen din se dard hai"}
 
 func TestTokensAreSequentialAndIdempotent(t *testing.T) {
 	s := OpenStore("")
@@ -73,5 +73,14 @@ func TestRecordsSurviveRestart(t *testing.T) {
 	r, _, _ := reopened.Create(NewRecord{Kind: "registration", SessionID: "b", Answers: savitri})
 	if r.Token != "OPD-002" {
 		t.Fatalf("token after restart: %s", r.Token)
+	}
+}
+
+func TestSexRequired(t *testing.T) {
+	s := OpenStore("")
+	noSex := savitri
+	noSex.Sex = ""
+	if _, _, err := s.Create(NewRecord{Kind: "registration", SessionID: "nosex", Answers: noSex}); err != ErrIncomplete {
+		t.Fatalf("registration without sex: got %v, want ErrIncomplete", err)
 	}
 }

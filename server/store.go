@@ -20,21 +20,22 @@ const (
 
 var departments = []string{"General OPD", "Dental", "ENT"}
 
-// Answers holds the four registration details. The same shape is used for the
+// Answers holds the five registration details. The same shape is used for the
 // cleaned values shown on screen and for the patient's original words.
 type Answers struct {
 	Name      string `json:"name"`
 	Age       string `json:"age"`
+	Sex       string `json:"sex"`
 	Village   string `json:"village"`
 	Complaint string `json:"complaint"`
 }
 
 func (a Answers) complete() bool {
-	return a.Name != "" && a.Age != "" && a.Village != "" && a.Complaint != ""
+	return a.Name != "" && a.Age != "" && a.Sex != "" && a.Village != "" && a.Complaint != ""
 }
 
 func (a *Answers) trim() {
-	for _, f := range []*string{&a.Name, &a.Age, &a.Village, &a.Complaint} {
+	for _, f := range []*string{&a.Name, &a.Age, &a.Sex, &a.Village, &a.Complaint} {
 		*f = limit(*f, 500)
 	}
 }
@@ -74,7 +75,7 @@ type StaffUpdate struct {
 
 var (
 	ErrNotFound   = errors.New("record not found")
-	ErrIncomplete = errors.New("all four details are required")
+	ErrIncomplete = errors.New("all five details are required")
 	ErrBadInput   = errors.New("invalid request")
 )
 
