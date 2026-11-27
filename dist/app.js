@@ -6,6 +6,7 @@ const root = document.querySelector("#app");
 const nav = document.querySelector("#nav");
 const live = document.querySelector("#status");
 const printArea = document.querySelector("#print");
+const topExtras = document.querySelector("#top-extras");
 const FIELDS = P.FIELDS;
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const canSpeak = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
@@ -54,6 +55,10 @@ function ibtn(act, name, text, cls = "", extra = "") {
 // ---------- speaking and listening ----------
 
 let epoch = 0, recog = null, silenceTimer = null, utterances = [];
+// Set once browser recognition fails for good (no network service, mic
+// blocked). From then on the kiosk takes speech through the dictation box.
+let voiceBroken = false;
+const canListen = () => !!SR && !voiceBroken;
 
 function stopVoice() {
   epoch++;
@@ -106,16 +111,16 @@ function say(text, then) {
 // ask() speaks a prompt and, in voice mode, listens for the answer.
 function ask(text) {
   bump();
-  say(text, () => { if (s.voice && SR && !s.sample) listen(); });
+  say(text, () => { if (s.voice && canListen() && !s.sample) listen(); });
 }
 
 // listen() waits up to ten seconds for an answer. Chrome gives up after a
 // few seconds of quiet, so a silent end before then quietly starts again.
 function listen(started = Date.now()) {
-  if (!SR) {
+  if (!canListen()) {
     s.voice = false;
-    s.warning = t("noVoiceInput");
-    return render();
+    render();
+    return document.querySelector("#dictate")?.focus();
   }
   stopVoice();
   const my = epoch;
@@ -164,7 +169,8 @@ function listen(started = Date.now()) {
 
 function voiceOff(key) {
   s.voice = false;
-  s.warning = t(key);
+  voiceBroken = true;
+  s.warning = t("dictateWarn");
   render();
   say(s.warning);
 }
@@ -239,7 +245,7 @@ function handle(text, conf = 0.92, touch = false) {
       return ask(s.warning);
     }
     s.lang = lang;
-    s.voice = !s.sample && !!SR;
+    s.voice = !s.sample && canListen();
     return toConsent();
   }
   if (it === "help") return assist("Patient asked for help");
@@ -603,20 +609,20 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 
 function micState() {
   if (mic === "ready" && s.sample) return "sample";
-  if (mic === "ready" && !SR) return "off";
+  if (mic === "ready" && !canListen()) return "dictate";
   return mic;
 }
 
 function micText() {
-  return t({ ready: "micReady", listening: "micListening", processing: "micProcessing", speaking: "micSpeaking", sample: "micSample", off: "micOff" }[micState()]);
+  return t({ ready: "micReady", listening: "micListening", processing: "micProcessing", speaking: "micSpeaking", sample: "micSample", dictate: "micDictate" }[micState()]);
 }
 
 // The microphone is a waveform pill: the bars move while it listens, fold to
 // dots while it works out what was said, and fill green while it speaks.
 function micButton() {
   const st = micState();
-  const disabled = st === "sample" || st === "off" ? "disabled" : "";
-  const glyph = st === "sample" || st === "off"
+  const disabled = st === "sample" ? "disabled" : "";
+  const glyph = st === "sample"
     ? icon("micOff")
     : `<span class="bars" aria-hidden="true">${"<i></i>".repeat(7)}</span>`;
   return `<button type="button" id="mic" class="mic is-${st}" data-act="speak" ${disabled}>
@@ -733,7 +739,7 @@ function slip({ editable = false, record = null } = {}) {
     ? `<div class="slip-token"><span>${esc(t("tokenTitle"))}</span><strong>${esc(record.token)}</strong></div>`
     : `<p class="slip-foot">${esc(t("tokenLater"))}</p>`;
   return `<aside class="slip" aria-label="${esc(t("slipTitle"))}">
-    <h3>${esc(t("slipTitle"))}</h3><p class="slip-sub">${esc(record ? t("slipDone") : t("slipSub"))}</p>
+    <h3>${esc(t("slipTitle"))}</h3><p class="slip-sub">${esc(record ? t("slipDone") : now ? t("step", s.step + 1, 4) + " · " + t("slipSub") : t("slipSub"))}</p>
     ${rows}${foot}</aside>`;
 }
 
@@ -751,7 +757,7 @@ function welcomeView() {
       <div class="welcome-voice">
         ${s.voice ? micButton() : `<button type="button" class="mic" data-act="welcome-mic"><span class="bars" aria-hidden="true">${"<i></i>".repeat(7)}</span><span class="mic-label"><span lang="hi">बोलकर चुनें</span> · Say it</span></button>`}
       </div>
-      ${warningBox()}${heardLine()}
+      ${warningBox()}${heardLine()}${dictateBox()}
       <label class="switch"><input type="checkbox" role="switch" data-act="demo-toggle" ${s.sample ? "checked" : ""}>
         <span class="track"><span class="thumb">${icon("check")}</span></span>
         <span>Demo mode: simulated speech, no microphone needed</span></label>
@@ -768,8 +774,17 @@ function welcomeView() {
   </section>`;
 }
 
+// The dictation box takes speech from Wispr Flow (or the computer's own
+// dictation) when the browser cannot listen. Flow types what the patient
+// says into the focused box; the kiosk treats it exactly like live speech.
+function dictateBox() {
+  if (s.sample || canListen()) return "";
+  return `<label class="dictate"><span>${icon("mic")}${esc(t("dictateLabel"))}</span>
+    <input id="dictate" type="text" autocomplete="off" spellcheck="false" lang="${s.lang}" aria-describedby="status"></label>`;
+}
+
 function stage(inner) {
-  return `<section class="stage">${demoChip()}${inner}${sampleTray()}</section>`;
+  return `<section class="stage">${inner}${dictateBox()}${sampleTray()}</section>`;
 }
 
 function consentView() {
@@ -792,13 +807,13 @@ function intakeView() {
   return `<div class="kiosk">${stage(`
     <h2 tabindex="-1">${esc(question(f))}</h2>
     <div class="voice">${ribbon()}${micButton()}${heardLine()}</div>
-    <div class="plaque ${value ? "has" : ""}">
+    ${warningBox()}${pendingBox()}
+    ${p ? "" : `<div class="plaque ${value ? "has" : ""}">
       <div><span class="slip-label">${esc(label(f))}</span>
         <span class="plaque-value">${value ? esc(value) + (p?.type === "confirmHeard" ? "?" : "") : "…"}</span>
         ${value && (f === "name" || f === "village") ? latin(value) : ""}</div>
       ${value ? ibtn("field-" + f, "edit", t("change"), "outlined") : ""}
-    </div>
-    ${warningBox()}${pendingBox()}`)}
+    </div>`}`)}
     ${slip()}</div>${controls()}`;
 }
 
@@ -851,14 +866,17 @@ function render() {
   document.documentElement.lang = s.lang;
   document.body.dataset.view = "kiosk";
   nav.hidden = s.screen !== "welcome";
+  topExtras.innerHTML = s.screen === "welcome" ? "" : demoChip() + (["consent", "intake", "review"].includes(s.screen)
+    ? `<div class="lang-toggle" role="group" aria-label="Language">${["hi", "en"].map(l =>
+        `<button type="button" data-act="switch-${l}" lang="${l}" aria-pressed="${s.lang === l}">${l === "hi" ? "हिन्दी" : "English"}</button>`).join("")}</div>` : "");
   nav.innerHTML = icon("people") + "<span>Staff desk</span>";
   nav.setAttribute("href", "#staff");
   const view = { welcome: welcomeView, consent: consentView, intake: intakeView, review: reviewView, token: tokenView, help: helpView }[s.screen];
   root.innerHTML = view() + idleOverlay();
-  if (shownScreen !== s.screen) {
-    shownScreen = s.screen;
-    root.querySelector("h1, h2")?.focus({ preventScroll: true });
-  }
+  const box = root.querySelector("#dictate");
+  if (box) box.focus({ preventScroll: true });
+  else if (shownScreen !== s.screen) root.querySelector("h1, h2")?.focus({ preventScroll: true });
+  shownScreen = s.screen;
   s.flash = null;
 }
 
@@ -893,11 +911,10 @@ root.addEventListener("click", e => {
   switch (act) {
     case "lang-hi": case "lang-en":
       s.lang = act.slice(5);
-      s.voice = !s.sample && !!SR;
-      if (!SR && !s.sample) s.warning = t("noVoiceInput");
+      s.voice = !s.sample && canListen();
       return toConsent();
     case "welcome-mic":
-      if (!SR) { s.warning = t("noVoiceInput"); return render(); }
+      if (!canListen()) { render(); return document.querySelector("#dictate")?.focus(); }
       s.voice = true;
       render();
       return say(t("greet"), () => listen());
@@ -920,6 +937,23 @@ root.addEventListener("click", e => {
     case "print": return printSlip(s.record);
     case "replay": return say(tokenSpeech());
   }
+});
+
+let dictateTimer = null;
+function sendDictation(el) {
+  clearTimeout(dictateTimer);
+  const text = el.value.trim();
+  if (!text) return;
+  el.value = "";
+  handle(text, 0.92);
+}
+root.addEventListener("input", e => {
+  if (e.target.id !== "dictate") return;
+  clearTimeout(dictateTimer);
+  dictateTimer = setTimeout(() => sendDictation(e.target), 1200);
+});
+root.addEventListener("keydown", e => {
+  if (e.target.id === "dictate" && e.key === "Enter") { e.preventDefault(); sendDictation(e.target); }
 });
 
 // ---------- printing ----------
@@ -1066,6 +1100,7 @@ function staffSheet(r) {
 function renderStaff() {
   document.documentElement.lang = "en";
   document.body.dataset.view = "staff";
+  topExtras.innerHTML = "";
   nav.hidden = false;
   nav.innerHTML = icon("back") + "<span>Patient kiosk</span>";
   nav.setAttribute("href", "#");
@@ -1115,6 +1150,16 @@ root.addEventListener("submit", async e => {
 });
 
 // ---------- start ----------
+
+// Switching language mid-conversation keeps every answer and re-asks the
+// current question in the new language.
+topExtras.addEventListener("click", e => {
+  const el = e.target.closest("[data-act^=switch-]");
+  if (!el) return;
+  s.lang = el.dataset.act.slice(7);
+  render();
+  ask(prompt());
+});
 
 window.addEventListener("hashchange", () => {
   if (location.hash === "#staff") return enterStaff();

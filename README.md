@@ -30,7 +30,9 @@ Switch on **Demo mode** on the welcome screen to use buttons that stand in for s
 4. **Failures.** Press *Background noise* twice, or *Silence*. Noise repeats only the current question; silence offers more time; a second failure offers staff help and sends what was already given to the dashboard as *Needs Assistance*.
 5. **Staff.** On `#staff`, correct any detail, confirm the department and print the slip. The status becomes *Registered*.
 
-With demo mode off, Chrome or Edge on localhost (or HTTPS) listens through the microphone after every prompt. You can say “दोबारा” or “repeat”, “मदद” or “help”, and “गलत है”, or use the buttons at the bottom of the screen.
+With demo mode off, Chrome or Edge on localhost (or HTTPS) listens through the microphone after every prompt.
+
+**Wispr Flow fallback.** Browser speech recognition needs Google's online service, which often fails on Linux and Brave ("network" error). When it does, the kiosk says so once and shows a dictation box instead. Hold your [Wispr Flow](https://wisprflow.ai) key and speak: Flow types your words into the box, and after a short pause the kiosk handles them exactly like live speech (corrections, readback and all). Any system dictation works the same way. You can say “दोबारा” or “repeat”, “मदद” or “help”, and “गलत है”, or use the buttons at the bottom of the screen.
 
 ## How it works
 
@@ -55,7 +57,7 @@ server/        Go standard library only
 
 | Depends on | If it becomes costly or stops working |
 |---|---|
-| Browser speech recognition (Chrome sends audio to Google; Firefox has none) | Demo mode and touch controls still work. Next step: an on-premise Indian-language model (AI4Bharat IndicConformer, or Vosk for Hindi) behind the same `handle(text, confidence)` entry point. |
+| Browser speech recognition (Chrome sends audio to Google; Firefox has none) | Falls back to Wispr Flow (or OS dictation) typing into the kiosk's dictation box; demo mode and touch controls still work. Next step: an on-premise Indian-language model (AI4Bharat IndicConformer, or Vosk for Hindi) behind the same `handle(text, confidence)` entry point. |
 | Browser text-to-speech voices | Every prompt is also on screen; a missing voice skips speech without stalling. Pre-recorded prompt audio is a cheap replacement. |
 | Go server + JSON file | Runs on any small machine in the hospital LAN with no internet. |
 
